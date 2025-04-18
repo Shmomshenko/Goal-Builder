@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goal Builder</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: #f3f4f6;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+      box-sizing: border-box;
+    }
+    .goal-input {
+      width: auto;
+      margin-right: 0.5rem;
+      padding: 0.3rem 0.5rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      margin-top: 1rem;
+    }
+    .goal-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    .goal-actions {
+      margin-top: 0.5rem;
+    }
+    .progress {
+      background: #e5e7eb;
+      border-radius: 1rem;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .progress-bar {
+      background: #10b981;
+      height: 1rem;
+      width: 0;
+      transition: width 0.3s;
+    }
+    /* Темная тема */
+    .dark-mode {
+      background: #1a202c;
+      color: #f7fafc;
+    }
+    .dark-mode .goal-card {
+      background: #2d3748;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .dark-mode .goal-input, .dark-mode input {
+      background: #2d3748;
+      color: #f7fafc;
+      border: 1px solid #4a5568;
+    }
+    .dark-mode button {
+      background: #2d3748;
+      border: 1px solid #4a5568;
+    }
+    .dark-mode .progress {
+      background: #4a5568;
+    }
+
+    /* Адаптивный дизайн */
+    @media (max-width: 768px) {
+      .form-group {
+        max-width: 100%;
+      }
+      .goal-card {
+        width: 100%;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.2rem;
+      }
+      button {
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Цель-Билдер</h1>
+  <div>
+    <div class="form-group">
+      <label for="goalName">Цель</label>
+      <input type="text" id="goalName" placeholder="Например: Учить JS" />
+    </div>
+    <div class="form-group">
+      <label for="goalFreq">Раз в неделю</label>
+      <input type="number" id="goalFreq" min="1" max="7" />
+    </div>
+    <div class="form-group">
+      <label for="goalWeeks">Сколько недель</label>
+      <input type="number" id="goalWeeks" min="1" max="52" />
+    </div>
+    <button onclick="addGoal()">Добавить цель</button>
+    <button onclick="toggleTheme()">Тема</button>
+  </div>
+  <hr style="margin: 2rem 0;">
+  <div id="goalList"></div>
+
+  <script>
+    const goalList = document.getElementById('goalList');
+    const body = document.body;
+
+    function loadGoals() {
+      const saved = localStorage.getItem('goals');
+      if (!saved) return;
+      const goals = JSON.parse(saved);
+      goals.forEach((goal, index) => renderGoal(goal, index));
+    }
+
+    function saveGoals(goals) {
+      localStorage.setItem('goals', JSON.stringify(goals));
+    }
+
+    function renderGoal(goal, index) {
+      const progress = goal.progress || 0;
+      const total = goal.freq * goal.weeks;
+      const percent = Math.min(100, Math.round((progress / total) * 100));
+
+      const div = document.createElement('div');
+      div.className = 'goal-card';
+      div.innerHTML = `
+        <div>
+          <input class="goal-input" id="name-${index}" value="${goal.name}" />
+          <input class="goal-input" id="freq-${index}" type="number" min="1" max="7" value="${goal.freq}" />
+          раз в неделю на 
+          <input class="goal-input" id="weeks-${index}" type="number" min="1" max="52" value="${goal.weeks}" /> недель
+        </div>
+        <div class="goal-actions">
+          <button onclick="updateGoal(${index})">💾 Сохранить</button>
+          <button onclick="incrementProgress(${index})">+1 ✅</button>
+          <button onclick="deleteGoal(${index})">❌ Удалить</button>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" style="width: ${percent}%"></div>
+        </div>
+        <small>${progress} / ${total}</small>
+      `;
+      goalList.appendChild(div);
+    }
+
+    function addGoal() {
+      const name = document.getElementById('goalName').value;
+      const freq = document.getElementById('goalFreq').value;
+      const weeks = document.getElementById('goalWeeks').value;
+
+      if (!name || !freq || !weeks) {
+        alert('Заполни все поля');
+        return;
+      }
+
+      const goal = { name, freq, weeks, progress: 0 };
+      const saved = localStorage.getItem('goals');
+      const goals = saved ? JSON.parse(saved) : [];
+      goals.push(goal);
+      saveGoals(goals);
+
+      goalList.innerHTML = '';
+      goals.forEach((g, i) => renderGoal(g, i));
+
+      document.getElementById('goalName').value = '';
+      document.getElementById('goalFreq').value = '';
+      document.getElementById('goalWeeks').value = '';
+    }
+
+    function updateGoal(index) {
+      const name = document.getElementById(`name-${index}`).value;
+      const freq = document.getElementById(`freq-${index}`).value;
+      const weeks = document.getElementById(`weeks-${index}`).value;
+
+      const saved = localStorage.getItem('goals');
+      const goals = saved ? JSON.parse(saved) : [];
+      const prevProgress = goals[index].progress || 0;
+
+      goals[index] = { name, freq, weeks, progress: prevProgress };
+      saveGoals(goals);
+
+      goalList.innerHTML = '';
+      goals.forEach((g, i) => renderGoal(g, i));
+    }
+
+    function incrementProgress(index) {
+      const saved = localStorage.getItem('goals');
+      const goals = saved ? JSON.parse(saved) : [];
+      goals[index].progress = (goals[index].progress || 0) + 1;
+      saveGoals(goals);
+
+      goalList.innerHTML = '';
+      goals.forEach((g, i) => renderGoal(g, i));
+    }
+
+    function deleteGoal(index) {
+      const saved = localStorage.getItem('goals');
+      const goals = saved ? JSON.parse(saved) : [];
+      goals.splice(index, 1);  // Удаляем цель по индексу
+      saveGoals(goals);
+
+      goalList.innerHTML = '';  // Очищаем список
+      goals.forEach((g, i) => renderGoal(g, i));  // Перерисовываем оставшиеся цели
+    }
+
+    function toggleTheme() {
+      body.classList.toggle('dark-mode');
+    }
+
+    loadGoals();
+  </script>
+</body>
+</html>
